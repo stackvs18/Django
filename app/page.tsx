@@ -45,7 +45,7 @@ import { COMMAND_REFERENCE } from "@/data/commands";
 export default function Home() {
   // Navigation & View State
   const [activeTab, setActiveTab] = useState<"dashboard" | "notes" | "quiz" | "commands">("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Closed by default on mobile, managed by effect
   const [expandedNotesMenu, setExpandedNotesMenu] = useState(true);
   const [expandedQuizMenu, setExpandedQuizMenu] = useState(true);
 
@@ -58,7 +58,7 @@ export default function Home() {
 
   // Quiz Engine State
   const [quizUnit, setQuizUnit] = useState<string>("all");
-  const [mcqViewMode, setMcqViewMode] = useState<"quiz" | "study">("study"); // Default study mode so user can see all answers immediately!
+  const [mcqViewMode, setMcqViewMode] = useState<"quiz" | "study">("study");
   const [currentQuizIndex, setCurrentQuizIndex] = useState<number>(0);
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
@@ -67,6 +67,20 @@ export default function Home() {
   // Global Search Command Palette (⌘K)
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [globalSearch, setGlobalSearch] = useState<string>("");
+
+  // Responsive sidebar handling for desktop vs mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   // Time-based greeting
   const [greeting, setGreeting] = useState("Good Evening");
@@ -91,6 +105,15 @@ export default function Home() {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Helper to handle tab selection on mobile
+  const handleNavClick = (tab: "dashboard" | "notes" | "quiz" | "commands", noteId?: string) => {
+    setActiveTab(tab);
+    if (noteId) setSelectedNoteId(noteId);
+    if (window.innerWidth < 1024) {
+      setSidebarOpen(false);
+    }
+  };
 
   // Filtered Quiz MCQs
   const filteredMCQs = useMemo(() => {
@@ -164,71 +187,87 @@ export default function Home() {
     <div className="min-h-screen bg-[#050505] text-[#f5f5f5] flex flex-col font-sans selection:bg-white selection:text-black">
       
       {/* --- TOP BAR --- */}
-      <header className="h-16 border-b border-[#262626] bg-[#0a0a0a]/90 backdrop-blur-md sticky top-0 z-30 px-4 md:px-6 flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <header className="h-16 border-b border-[#262626] bg-[#0a0a0a]/90 backdrop-blur-md sticky top-0 z-30 px-3 md:px-6 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-4 flex-1">
           <button
             onClick={() => setSidebarOpen((prev) => !prev)}
             className="p-2 rounded-lg text-neutral-400 hover:text-white hover:bg-[#1a1a1a] transition"
-            title="Toggle Sidebar"
+            title="Toggle Menu"
           >
-            <Menu className="w-5 h-5" />
+            {sidebarOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5" />}
           </button>
 
           {/* Search Trigger */}
           <div
             onClick={() => setIsSearchOpen(true)}
-            className="flex items-center gap-3 bg-[#121212] hover:bg-[#1a1a1a] border border-[#262626] px-3.5 py-1.5 rounded-lg text-neutral-400 cursor-pointer w-64 md:w-80 transition text-sm"
+            className="flex items-center gap-2 bg-[#121212] hover:bg-[#1a1a1a] border border-[#262626] px-3 py-1.5 rounded-lg text-neutral-400 cursor-pointer flex-1 max-w-md transition text-xs sm:text-sm"
           >
-            <Search className="w-4 h-4 text-neutral-500" />
-            <span className="flex-1 text-neutral-400 truncate">Search notes, commands, MCQs...</span>
-            <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[11px] font-mono bg-[#262626] px-1.5 py-0.5 rounded text-neutral-300 border border-neutral-700">
+            <Search className="w-4 h-4 text-neutral-500 shrink-0" />
+            <span className="flex-1 text-neutral-400 truncate">Search notes, commands...</span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono bg-[#262626] px-1.5 py-0.5 rounded text-neutral-300 border border-neutral-700">
               ⌘K
             </kbd>
           </div>
         </div>
 
         {/* Top Right Status */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-[#121212] border border-[#262626] px-3 py-1 rounded-full text-xs font-medium text-neutral-300">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 bg-[#121212] border border-[#262626] px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-medium text-neutral-300">
             <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-            <span>Connected</span>
+            <span className="hidden xs:inline">Connected</span>
           </div>
         </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden relative">
         
-        {/* --- LEFT SIDEBAR (290px MONOCHROME) --- */}
+        {/* --- MOBILE OVERLAY BACKDROP --- */}
+        {sidebarOpen && (
+          <div
+            onClick={() => setSidebarOpen(false)}
+            className="lg:hidden fixed inset-0 bg-black/70 backdrop-blur-xs z-40"
+          />
+        )}
+
+        {/* --- LEFT SIDEBAR (RESPONSIVE OVERLAY ON MOBILE / STICKY ON DESKTOP) --- */}
         <aside
-          className={`${
-            sidebarOpen ? "w-[290px]" : "w-0 -translate-x-full overflow-hidden"
-          } transition-all duration-300 border-r border-[#262626] bg-[#0a0a0a] flex flex-col shrink-0 z-20 sticky top-16 h-[calc(100vh-4rem)]`}
+          className={`fixed lg:sticky top-16 bottom-0 left-0 z-50 lg:z-20 w-72 lg:w-[290px] bg-[#0a0a0a] border-r border-[#262626] flex flex-col transition-transform duration-300 ${
+            sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          } h-[calc(100vh-4rem)]`}
         >
           {/* Brand Block */}
-          <div className="p-5 border-b border-[#262626] flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white text-black border border-white flex items-center justify-center font-extrabold text-xl">
-              Dj
+          <div className="p-4 border-b border-[#262626] flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-white text-black border border-white flex items-center justify-center font-extrabold text-lg">
+                Dj
+              </div>
+              <div>
+                <h1 className="font-bold text-white text-sm leading-tight tracking-wide">
+                  Django Hub
+                </h1>
+                <p className="text-[11px] text-neutral-400 font-medium">Interactive Learning</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-white text-base leading-tight tracking-wide">
-                Django Hub
-              </h1>
-              <p className="text-xs text-neutral-400 font-medium">Interactive Learning</p>
-            </div>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-1.5 text-neutral-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Navigation Items */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <div className="flex-1 overflow-y-auto p-3 space-y-5">
             {/* LEARNING SECTION */}
             <div>
-              <div className="px-3 text-[11px] font-bold text-neutral-500 tracking-wider uppercase mb-2">
+              <div className="px-3 text-[10px] font-bold text-neutral-500 tracking-wider uppercase mb-1.5">
                 Learning
               </div>
               <nav className="space-y-1">
                 {/* Dashboard */}
                 <button
-                  onClick={() => setActiveTab("dashboard")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                  onClick={() => handleNavClick("dashboard")}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition ${
                     activeTab === "dashboard"
                       ? "bg-white text-black font-bold shadow"
                       : "text-neutral-400 hover:text-white hover:bg-[#171717]"
@@ -245,7 +284,7 @@ export default function Home() {
                       setActiveTab("notes");
                       setExpandedNotesMenu((prev) => !prev);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition ${
                       activeTab === "notes"
                         ? "bg-white text-black font-bold shadow"
                         : "text-neutral-400 hover:text-white hover:bg-[#171717]"
@@ -259,14 +298,11 @@ export default function Home() {
                   </button>
 
                   {expandedNotesMenu && (
-                    <div className="ml-4 pl-3 border-l border-[#262626] mt-1 space-y-1">
+                    <div className="ml-3 pl-2.5 border-l border-[#262626] mt-1 space-y-1">
                       {STUDY_NOTES.map((note) => (
                         <button
                           key={note.id}
-                          onClick={() => {
-                            setActiveTab("notes");
-                            setSelectedNoteId(note.id);
-                          }}
+                          onClick={() => handleNavClick("notes", note.id)}
                           className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-medium truncate block transition ${
                             selectedNoteId === note.id && activeTab === "notes"
                               ? "text-white bg-[#262626] font-bold"
@@ -288,7 +324,7 @@ export default function Home() {
                       setActiveTab("quiz");
                       setExpandedQuizMenu((prev) => !prev);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition ${
                       activeTab === "quiz"
                         ? "bg-white text-black font-bold shadow"
                         : "text-neutral-400 hover:text-white hover:bg-[#171717]"
@@ -302,14 +338,14 @@ export default function Home() {
                   </button>
 
                   {expandedQuizMenu && (
-                    <div className="ml-4 pl-3 border-l border-[#262626] mt-1 space-y-1">
+                    <div className="ml-3 pl-2.5 border-l border-[#262626] mt-1 space-y-1">
                       {["all", "Unit 8", "Unit 9", "Unit 10"].map((unit) => (
                         <button
                           key={unit}
                           onClick={() => {
-                            setActiveTab("quiz");
                             setQuizUnit(unit);
                             setCurrentQuizIndex(0);
+                            handleNavClick("quiz");
                           }}
                           className={`w-full text-left px-2.5 py-1 rounded-lg text-xs font-medium block transition ${
                             quizUnit === unit && activeTab === "quiz"
@@ -326,8 +362,8 @@ export default function Home() {
 
                 {/* Command Reference */}
                 <button
-                  onClick={() => setActiveTab("commands")}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${
+                  onClick={() => handleNavClick("commands")}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium transition ${
                     activeTab === "commands"
                       ? "bg-white text-black font-bold shadow"
                       : "text-neutral-400 hover:text-white hover:bg-[#171717]"
@@ -341,7 +377,7 @@ export default function Home() {
 
             {/* TOOLS SECTION */}
             <div>
-              <div className="px-3 text-[11px] font-bold text-neutral-500 tracking-wider uppercase mb-2">
+              <div className="px-3 text-[10px] font-bold text-neutral-500 tracking-wider uppercase mb-1.5">
                 Tools
               </div>
               <nav className="space-y-1">
@@ -352,13 +388,13 @@ export default function Home() {
                 ].map((item) => (
                   <div
                     key={item.name}
-                    className="flex items-center justify-between px-3 py-2 rounded-xl text-sm text-neutral-600 cursor-not-allowed select-none"
+                    className="flex items-center justify-between px-3 py-1.5 rounded-xl text-xs text-neutral-600 cursor-not-allowed select-none"
                   >
                     <div className="flex items-center gap-3">
                       <item.icon className="w-4 h-4" />
                       <span>{item.name}</span>
                     </div>
-                    <span className="text-[10px] bg-[#1a1a1a] border border-[#262626] text-neutral-500 px-1.5 py-0.5 rounded font-mono">
+                    <span className="text-[9px] bg-[#1a1a1a] border border-[#262626] text-neutral-500 px-1.5 py-0.5 rounded font-mono">
                       Soon
                     </span>
                   </div>
@@ -368,7 +404,7 @@ export default function Home() {
 
             {/* ACCOUNT SECTION */}
             <div>
-              <div className="px-3 text-[11px] font-bold text-neutral-500 tracking-wider uppercase mb-2">
+              <div className="px-3 text-[10px] font-bold text-neutral-500 tracking-wider uppercase mb-1.5">
                 Account
               </div>
               <nav className="space-y-1">
@@ -378,13 +414,13 @@ export default function Home() {
                 ].map((item) => (
                   <div
                     key={item.name}
-                    className="flex items-center justify-between px-3 py-2 rounded-xl text-sm text-neutral-600 cursor-not-allowed select-none"
+                    className="flex items-center justify-between px-3 py-1.5 rounded-xl text-xs text-neutral-600 cursor-not-allowed select-none"
                   >
                     <div className="flex items-center gap-3">
                       <item.icon className="w-4 h-4" />
                       <span>{item.name}</span>
                     </div>
-                    <span className="text-[10px] bg-[#1a1a1a] border border-[#262626] text-neutral-500 px-1.5 py-0.5 rounded font-mono">
+                    <span className="text-[9px] bg-[#1a1a1a] border border-[#262626] text-neutral-500 px-1.5 py-0.5 rounded font-mono">
                       Soon
                     </span>
                   </div>
@@ -394,107 +430,107 @@ export default function Home() {
           </div>
 
           {/* Bottom Status Pill */}
-          <div className="p-4 border-t border-[#262626]">
-            <div className="bg-[#121212] border border-[#262626] rounded-xl p-3 flex items-center gap-3">
-              <span className="w-2.5 h-2.5 rounded-full bg-white animate-ping" />
+          <div className="p-3 border-t border-[#262626]">
+            <div className="bg-[#121212] border border-[#262626] rounded-xl p-2.5 flex items-center gap-2.5">
+              <span className="w-2 h-2 rounded-full bg-white animate-ping shrink-0" />
               <div>
                 <div className="text-xs font-semibold text-white">Mock Engine Active</div>
-                <div className="text-[11px] text-neutral-400">In-Memory / Instant</div>
+                <div className="text-[10px] text-neutral-400">In-Memory / Instant</div>
               </div>
             </div>
           </div>
         </aside>
 
         {/* --- MAIN CONTENT AREA --- */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 max-w-7xl mx-auto space-y-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6 sm:space-y-8">
 
           {/* ========================================================================= */}
           {/* TAB 1: DASHBOARD                                                          */}
           {/* ========================================================================= */}
           {activeTab === "dashboard" && (
-            <div className="space-y-8 animate-fadeIn">
+            <div className="space-y-6 sm:space-y-8 animate-fadeIn">
               
               {/* HERO GREETING WITH NAME VRAJ */}
               <div>
-                <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
                   {greeting}, Vraj 👋
                 </h1>
-                <p className="text-sm md:text-base text-neutral-400 mt-1">
+                <p className="text-xs sm:text-sm text-neutral-400 mt-1">
                   Continue your Django & DRF journey — Monochrome Exam Revision Hub
                 </p>
               </div>
 
-              {/* 4 STAT CARDS ROW */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 4 STAT CARDS ROW (MOBILE 2x2 GRID) */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Stat 1: Topics Completed */}
-                <div className="bg-[#121212] border border-[#262626] rounded-xl p-4 flex flex-col justify-between hover:border-neutral-500 transition">
+                <div className="bg-[#121212] border border-[#262626] rounded-xl p-3.5 sm:p-4 flex flex-col justify-between hover:border-neutral-500 transition">
                   <div className="flex items-center justify-between text-neutral-400">
-                    <span className="text-[11px] font-bold tracking-wider uppercase text-neutral-400">
-                      Topics Completed
+                    <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-neutral-400">
+                      Topics
                     </span>
                     <BookCheck className="w-4 h-4 text-white" />
                   </div>
-                  <div className="mt-3">
-                    <span className="text-2xl font-bold text-white">18 / 25</span>
+                  <div className="mt-2 sm:mt-3">
+                    <span className="text-lg sm:text-2xl font-bold text-white">18 / 25</span>
                   </div>
                 </div>
 
                 {/* Stat 2: Questions Solved */}
-                <div className="bg-[#121212] border border-[#262626] rounded-xl p-4 flex flex-col justify-between hover:border-neutral-500 transition">
+                <div className="bg-[#121212] border border-[#262626] rounded-xl p-3.5 sm:p-4 flex flex-col justify-between hover:border-neutral-500 transition">
                   <div className="flex items-center justify-between text-neutral-400">
-                    <span className="text-[11px] font-bold tracking-wider uppercase text-neutral-400">
-                      Questions Solved
+                    <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-neutral-400">
+                      Questions
                     </span>
                     <HelpCircle className="w-4 h-4 text-white" />
                   </div>
-                  <div className="mt-3">
-                    <span className="text-2xl font-bold text-white">{quizStats.totalAnswered > 0 ? quizStats.totalAnswered : 218}</span>
+                  <div className="mt-2 sm:mt-3">
+                    <span className="text-lg sm:text-2xl font-bold text-white">{quizStats.totalAnswered > 0 ? quizStats.totalAnswered : 218}</span>
                   </div>
                 </div>
 
                 {/* Stat 3: Accuracy */}
-                <div className="bg-[#121212] border border-[#262626] rounded-xl p-4 flex flex-col justify-between hover:border-neutral-500 transition">
+                <div className="bg-[#121212] border border-[#262626] rounded-xl p-3.5 sm:p-4 flex flex-col justify-between hover:border-neutral-500 transition">
                   <div className="flex items-center justify-between text-neutral-400">
-                    <span className="text-[11px] font-bold tracking-wider uppercase text-neutral-400">
+                    <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-neutral-400">
                       Accuracy
                     </span>
                     <Award className="w-4 h-4 text-white" />
                   </div>
-                  <div className="mt-3">
-                    <span className="text-2xl font-bold text-white">{quizStats.accuracy}%</span>
+                  <div className="mt-2 sm:mt-3">
+                    <span className="text-lg sm:text-2xl font-bold text-white">{quizStats.accuracy}%</span>
                   </div>
                 </div>
 
                 {/* Stat 4: Streak */}
-                <div className="bg-[#121212] border border-[#262626] rounded-xl p-4 flex flex-col justify-between hover:border-neutral-500 transition">
+                <div className="bg-[#121212] border border-[#262626] rounded-xl p-3.5 sm:p-4 flex flex-col justify-between hover:border-neutral-500 transition">
                   <div className="flex items-center justify-between text-neutral-400">
-                    <span className="text-[11px] font-bold tracking-wider uppercase text-neutral-400">
+                    <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-neutral-400">
                       Streak
                     </span>
                     <Flame className="w-4 h-4 text-white" />
                   </div>
-                  <div className="mt-3">
-                    <span className="text-2xl font-bold text-white">14 Days</span>
+                  <div className="mt-2 sm:mt-3">
+                    <span className="text-lg sm:text-2xl font-bold text-white">14 Days</span>
                   </div>
                 </div>
               </div>
 
               {/* LEARNING PROGRESS CARD */}
-              <div className="bg-[#121212] border border-[#262626] rounded-xl p-5 md:p-6 space-y-4">
+              <div className="bg-[#121212] border border-[#262626] rounded-xl p-4 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-[#262626] pb-3">
-                  <h3 className="text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
+                  <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
                     <BarChart2 className="w-4 h-4 text-white" />
                     Learning Progress
                   </h3>
-                  <span className="text-xs text-neutral-400 font-medium">Updated today</span>
+                  <span className="text-[11px] text-neutral-400 font-medium">Updated today</span>
                 </div>
 
                 <div className="space-y-4 pt-1">
                   {/* Unit 8 */}
                   <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1.5">
-                      <span className="text-neutral-300">Unit 8: Django Basics (MVT, Models, Admin, Views)</span>
-                      <span className="text-white font-mono">82%</span>
+                    <div className="flex justify-between text-xs font-semibold mb-1.5 gap-2">
+                      <span className="text-neutral-300 truncate">Unit 8: Django Basics (MVT, Models, Admin, Views)</span>
+                      <span className="text-white font-mono shrink-0">82%</span>
                     </div>
                     <div className="w-full bg-[#050505] h-2 rounded-full overflow-hidden border border-[#262626]">
                       <div className="bg-white h-full rounded-full w-[82%]" />
@@ -503,9 +539,9 @@ export default function Home() {
 
                   {/* Unit 9 */}
                   <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1.5">
-                      <span className="text-neutral-300">Unit 9: Forms, Auth & Direct SQLite3 API</span>
-                      <span className="text-white font-mono">45%</span>
+                    <div className="flex justify-between text-xs font-semibold mb-1.5 gap-2">
+                      <span className="text-neutral-300 truncate">Unit 9: Forms, Auth & Direct SQLite3 API</span>
+                      <span className="text-white font-mono shrink-0">45%</span>
                     </div>
                     <div className="w-full bg-[#050505] h-2 rounded-full overflow-hidden border border-[#262626]">
                       <div className="bg-white h-full rounded-full w-[45%]" />
@@ -514,9 +550,9 @@ export default function Home() {
 
                   {/* Unit 10 */}
                   <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1.5">
-                      <span className="text-neutral-300">Unit 10: DRF & REST APIs (Serializers, ViewSets, JWT)</span>
-                      <span className="text-white font-mono">78%</span>
+                    <div className="flex justify-between text-xs font-semibold mb-1.5 gap-2">
+                      <span className="text-neutral-300 truncate">Unit 10: DRF & REST APIs (Serializers, ViewSets, JWT)</span>
+                      <span className="text-white font-mono shrink-0">78%</span>
                     </div>
                     <div className="w-full bg-[#050505] h-2 rounded-full overflow-hidden border border-[#262626]">
                       <div className="bg-white h-full rounded-full w-[78%]" />
@@ -526,11 +562,11 @@ export default function Home() {
               </div>
 
               {/* 3 LARGE FEATURE CARDS */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 
                 {/* Feature 1: Study Notes */}
                 <div
-                  onClick={() => setActiveTab("notes")}
+                  onClick={() => handleNavClick("notes")}
                   className="bg-[#121212] border border-[#262626] hover:border-white rounded-xl p-5 flex flex-col justify-between group cursor-pointer transition"
                 >
                   <div className="space-y-3">
@@ -559,7 +595,7 @@ export default function Home() {
 
                 {/* Feature 2: MCQ Practice */}
                 <div
-                  onClick={() => setActiveTab("quiz")}
+                  onClick={() => handleNavClick("quiz")}
                   className="bg-[#121212] border border-[#262626] hover:border-white rounded-xl p-5 flex flex-col justify-between group cursor-pointer transition"
                 >
                   <div className="space-y-3">
@@ -588,7 +624,7 @@ export default function Home() {
 
                 {/* Feature 3: Command Reference */}
                 <div
-                  onClick={() => setActiveTab("commands")}
+                  onClick={() => handleNavClick("commands")}
                   className="bg-[#121212] border border-[#262626] hover:border-white rounded-xl p-5 flex flex-col justify-between group cursor-pointer transition"
                 >
                   <div className="space-y-3">
@@ -625,25 +661,20 @@ export default function Home() {
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                   {QUICK_ACCESS_TOPICS.map((topic) => (
                     <div
                       key={topic.id}
-                      onClick={() => {
-                        setActiveTab("notes");
-                        setSelectedNoteId(topic.id);
-                      }}
-                      className="bg-[#121212] border border-[#262626] hover:border-white rounded-xl p-4 flex items-start gap-3 cursor-pointer group transition hover:bg-[#1a1a1a]"
+                      onClick={() => handleNavClick("notes", topic.id)}
+                      className="bg-[#121212] border border-[#262626] hover:border-white rounded-xl p-3.5 sm:p-4 flex items-start gap-3 cursor-pointer group transition hover:bg-[#1a1a1a]"
                     >
-                      <div className="p-2.5 rounded-lg bg-[#050505] border border-[#333] text-white">
+                      <div className="p-2 sm:p-2.5 rounded-lg bg-[#050505] border border-[#333] text-white shrink-0">
                         <topic.icon className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <h4 className="text-xs font-bold text-neutral-200 truncate group-hover:text-white transition">
-                            {topic.name}
-                          </h4>
-                        </div>
+                        <h4 className="text-xs font-bold text-neutral-200 truncate group-hover:text-white transition">
+                          {topic.name}
+                        </h4>
                         <p className="text-[11px] text-neutral-400 truncate mt-0.5">{topic.sections}</p>
                         {topic.badge && (
                           <span className="inline-block mt-1 text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-white text-black font-mono">
@@ -660,45 +691,64 @@ export default function Home() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 2: STUDY NOTES VIEW                                                   */}
+          {/* TAB 2: STUDY NOTES VIEW (MOBILE OPTIMIZED)                                */}
           {/* ========================================================================= */}
           {activeTab === "notes" && (
             <div className="space-y-6 animate-fadeIn">
               
-              {/* Filter Tabs */}
-              <div className="flex items-center justify-between flex-wrap gap-4 border-b border-[#262626] pb-4">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-white" />
-                  <h2 className="text-lg font-bold text-white">Django & DRF Exam Notes</h2>
+              {/* Filter Tabs & Mobile Topic Selector */}
+              <div className="space-y-3 border-b border-[#262626] pb-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-5 h-5 text-white" />
+                    <h2 className="text-base sm:text-lg font-bold text-white">Django & DRF Exam Notes</h2>
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-xl border border-[#262626] overflow-x-auto max-w-full">
+                    {[
+                      { label: "All", val: "all" },
+                      { label: "Unit 8", val: "Unit 8" },
+                      { label: "Unit 9", val: "Unit 9" },
+                      { label: "Unit 10", val: "Unit 10" }
+                    ].map((filter) => (
+                      <button
+                        key={filter.val}
+                        onClick={() => setNoteUnitFilter(filter.val)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium transition shrink-0 ${
+                          noteUnitFilter === filter.val
+                            ? "bg-white text-black font-bold shadow"
+                            : "text-neutral-400 hover:text-white"
+                        }`}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 bg-[#121212] p-1 rounded-xl border border-[#262626]">
-                  {[
-                    { label: "All Notes", val: "all" },
-                    { label: "Unit 8", val: "Unit 8" },
-                    { label: "Unit 9", val: "Unit 9" },
-                    { label: "Unit 10", val: "Unit 10" }
-                  ].map((filter) => (
-                    <button
-                      key={filter.val}
-                      onClick={() => setNoteUnitFilter(filter.val)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${
-                        noteUnitFilter === filter.val
-                          ? "bg-white text-black font-bold shadow"
-                          : "text-neutral-400 hover:text-white"
-                      }`}
-                    >
-                      {filter.label}
-                    </button>
-                  ))}
+                {/* Mobile Quick Dropdown Selector for Notes */}
+                <div className="lg:hidden">
+                  <select
+                    value={selectedNoteId}
+                    onChange={(e) => setSelectedNoteId(e.target.value)}
+                    className="w-full bg-[#121212] border border-[#262626] text-white text-xs rounded-xl p-2.5 font-semibold outline-none focus:border-white"
+                  >
+                    {STUDY_NOTES.filter(
+                      (n) => noteUnitFilter === "all" || n.unit.includes(noteUnitFilter)
+                    ).map((n) => (
+                      <option key={n.id} value={n.id}>
+                        {n.isHighWeight ? "★ " : ""}{n.title} ({n.unit})
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               {/* Note Details Pane */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                {/* Note Selector Sidebar */}
-                <div className="lg:col-span-4 space-y-2">
+                {/* Note Selector Sidebar (Desktop Only) */}
+                <div className="hidden lg:block lg:col-span-4 space-y-2">
                   {STUDY_NOTES.filter(
                     (n) => noteUnitFilter === "all" || n.unit.includes(noteUnitFilter)
                   ).map((note) => (
@@ -711,7 +761,7 @@ export default function Home() {
                           : "bg-[#121212] border-[#262626] text-neutral-400 hover:border-neutral-500 hover:text-white"
                       }`}
                     >
-                      <div className="mt-0.5">
+                      <div className="mt-0.5 shrink-0">
                         {note.isHighWeight ? (
                           <Star className="w-4 h-4 text-white fill-white" />
                         ) : (
@@ -734,10 +784,10 @@ export default function Home() {
                 </div>
 
                 {/* Main Reading Pane */}
-                <div className="lg:col-span-8 bg-[#121212] border border-[#262626] rounded-xl p-6 space-y-6">
+                <div className="lg:col-span-8 bg-[#121212] border border-[#262626] rounded-xl p-4 sm:p-6 space-y-6">
                   {/* Header */}
                   <div className="border-b border-[#262626] pb-4 space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <span className="text-xs font-bold text-white bg-[#262626] px-2.5 py-1 rounded border border-neutral-600 font-mono">
                         {currentNote.unit}
                       </span>
@@ -747,8 +797,8 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    <h2 className="text-xl font-bold text-white">{currentNote.title}</h2>
-                    <p className="text-sm text-neutral-300 leading-relaxed">{currentNote.content.explanation}</p>
+                    <h2 className="text-lg sm:text-xl font-bold text-white">{currentNote.title}</h2>
+                    <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">{currentNote.content.explanation}</p>
                   </div>
 
                   {/* Step-by-Step Practical Walkthrough if available */}
@@ -763,17 +813,17 @@ export default function Home() {
                         {currentNote.content.steps.map((step) => (
                           <div
                             key={step.stepNumber}
-                            className="bg-[#080808] border border-[#262626] rounded-xl p-4 space-y-3"
+                            className="bg-[#080808] border border-[#262626] rounded-xl p-3.5 sm:p-4 space-y-3"
                           >
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <span className="w-6 h-6 rounded-full bg-white text-black text-xs font-bold flex items-center justify-center font-mono">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white text-black text-xs font-bold flex items-center justify-center font-mono shrink-0">
                                   {step.stepNumber}
                                 </span>
-                                <h4 className="text-sm font-bold text-neutral-200">{step.title}</h4>
+                                <h4 className="text-xs sm:text-sm font-bold text-neutral-200">{step.title}</h4>
                               </div>
                               {step.codeFile && (
-                                <span className="text-[11px] font-mono text-neutral-400 bg-[#171717] px-2 py-0.5 rounded border border-neutral-700">
+                                <span className="text-[10px] sm:text-[11px] font-mono text-neutral-400 bg-[#171717] px-2 py-0.5 rounded border border-neutral-700">
                                   {step.codeFile}
                                 </span>
                               )}
@@ -782,11 +832,11 @@ export default function Home() {
 
                             {step.code && (
                               <div className="relative group rounded-lg overflow-hidden border border-[#333] bg-[#000000]">
-                                <div className="flex items-center justify-between px-3 py-1.5 bg-[#121212] border-b border-[#262626] text-[11px] font-mono text-neutral-400">
-                                  <span>{step.codeFile || "Python Snippet"}</span>
+                                <div className="flex items-center justify-between px-3 py-1.5 bg-[#121212] border-b border-[#262626] text-[10px] sm:text-[11px] font-mono text-neutral-400">
+                                  <span className="truncate max-w-[180px] sm:max-w-xs">{step.codeFile || "Python Snippet"}</span>
                                   <button
                                     onClick={() => handleCopyCode(step.code!)}
-                                    className="flex items-center gap-1 text-neutral-400 hover:text-white transition"
+                                    className="flex items-center gap-1 text-neutral-400 hover:text-white transition shrink-0"
                                   >
                                     {copiedCode === step.code ? (
                                       <Check className="w-3.5 h-3.5 text-white" />
@@ -796,7 +846,7 @@ export default function Home() {
                                     <span>{copiedCode === step.code ? "Copied" : "Copy"}</span>
                                   </button>
                                 </div>
-                                <pre className="p-3.5 text-xs font-mono text-neutral-200 overflow-x-auto leading-relaxed">
+                                <pre className="p-3 text-xs font-mono text-neutral-200 overflow-x-auto leading-relaxed">
                                   <code>{step.code}</code>
                                 </pre>
                               </div>
@@ -815,7 +865,7 @@ export default function Home() {
                       </h3>
                       {currentNote.content.codeSnippets.map((snippet, idx) => (
                         <div key={idx} className="rounded-lg border border-[#333] bg-[#000000] overflow-hidden">
-                          <div className="flex items-center justify-between px-3 py-1.5 bg-[#121212] border-b border-[#262626] text-[11px] font-mono text-neutral-400">
+                          <div className="flex items-center justify-between px-3 py-1.5 bg-[#121212] border-b border-[#262626] text-[10px] sm:text-[11px] font-mono text-neutral-400">
                             <span>{snippet.file}</span>
                             <button
                               onClick={() => handleCopyCode(snippet.code)}
@@ -829,7 +879,7 @@ export default function Home() {
                               <span>{copiedCode === snippet.code ? "Copied" : "Copy"}</span>
                             </button>
                           </div>
-                          <pre className="p-3.5 text-xs font-mono text-neutral-200 overflow-x-auto leading-relaxed">
+                          <pre className="p-3 text-xs font-mono text-neutral-200 overflow-x-auto leading-relaxed">
                             <code>{snippet.code}</code>
                           </pre>
                         </div>
@@ -862,33 +912,33 @@ export default function Home() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 3: MCQ PRACTICE & ALL ANSWERS VIEW                                    */}
+          {/* TAB 3: MCQ PRACTICE & ALL ANSWERS VIEW (MOBILE RESPONSIVE)               */}
           {/* ========================================================================= */}
           {activeTab === "quiz" && (
             <div className="space-y-6 animate-fadeIn">
               
               {/* MCQ Header & View Mode Switcher */}
-              <div className="flex items-center justify-between flex-wrap gap-4 border-b border-[#262626] pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262626] pb-4">
                 <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <HelpCircle className="w-5 h-5 text-white" />
-                    Django Exam MCQ Bank ({filteredMCQs.length} Questions)
+                  <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-white shrink-0" />
+                    Django Exam MCQ Bank ({filteredMCQs.length} Qs)
                   </h2>
                   <p className="text-xs text-neutral-400 mt-0.5">
                     Extracted from exam question bank · Practice Quiz or View All Answers
                   </p>
                 </div>
 
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
                   {/* Search Filter for MCQs */}
-                  <div className="relative">
+                  <div className="relative flex-1 sm:flex-initial">
                     <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-2.5" />
                     <input
                       type="text"
                       value={mcqSearchQuery}
                       onChange={(e) => setMcqSearchQuery(e.target.value)}
-                      placeholder="Filter MCQs by keyword..."
-                      className="bg-[#121212] border border-[#262626] text-xs text-white placeholder-neutral-500 pl-8 pr-3 py-1.5 rounded-lg outline-none focus:border-white w-48 sm:w-56"
+                      placeholder="Filter MCQs..."
+                      className="w-full bg-[#121212] border border-[#262626] text-xs text-white placeholder-neutral-500 pl-8 pr-3 py-1.5 rounded-lg outline-none focus:border-white"
                     />
                   </div>
 
@@ -899,30 +949,30 @@ export default function Home() {
                       setQuizUnit(e.target.value);
                       setCurrentQuizIndex(0);
                     }}
-                    className="bg-[#121212] border border-[#262626] text-white text-xs rounded-lg px-3 py-1.5 font-medium outline-none focus:border-white"
+                    className="bg-[#121212] border border-[#262626] text-white text-xs rounded-lg px-2.5 py-1.5 font-medium outline-none focus:border-white"
                   >
                     <option value="all">All Units ({MCQS.length} Qs)</option>
-                    <option value="Unit 8">Unit 8 Basics</option>
-                    <option value="Unit 9">Unit 9 Forms & Auth</option>
-                    <option value="Unit 10">Unit 10 DRF & APIs</option>
+                    <option value="Unit 8">Unit 8</option>
+                    <option value="Unit 9">Unit 9</option>
+                    <option value="Unit 10">Unit 10</option>
                   </select>
 
                   {/* Mode Switcher Buttons */}
-                  <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-xl border border-[#262626]">
+                  <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-xl border border-[#262626] w-full sm:w-auto justify-center">
                     <button
                       onClick={() => setMcqViewMode("study")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition ${
                         mcqViewMode === "study"
                           ? "bg-white text-black shadow"
                           : "text-neutral-400 hover:text-white"
                       }`}
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      <span>View All Answers</span>
+                      <span>All Answers</span>
                     </button>
                     <button
                       onClick={() => setMcqViewMode("quiz")}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 px-3 py-1 rounded-lg text-xs font-bold transition ${
                         mcqViewMode === "quiz"
                           ? "bg-white text-black shadow"
                           : "text-neutral-400 hover:text-white"
@@ -938,42 +988,42 @@ export default function Home() {
               {/* MODE 1: VIEW ALL ANSWERS & EXPLANATIONS (STUDY MODE) */}
               {mcqViewMode === "study" && (
                 <div className="space-y-4 max-w-4xl mx-auto">
-                  <div className="p-3 bg-[#121212] border border-[#262626] rounded-xl text-xs text-neutral-300 flex items-center justify-between">
+                  <div className="p-3 bg-[#121212] border border-[#262626] rounded-xl text-xs text-neutral-300 flex flex-col sm:flex-row justify-between gap-1">
                     <span>
-                      Showing <strong>{filteredMCQs.length}</strong> questions with correct answers and full explanations revealed.
+                      Showing <strong>{filteredMCQs.length}</strong> questions with correct answers revealed.
                     </span>
-                    <span className="text-neutral-500 font-mono text-[11px]">Strict Monochrome Study Mode</span>
+                    <span className="text-neutral-500 font-mono text-[10px]">Monochrome Study Mode</span>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-6">
                     {filteredMCQs.map((mcq, qIdx) => (
                       <div
                         key={mcq.id}
-                        className="bg-[#121212] border border-[#262626] rounded-xl p-5 space-y-4 hover:border-neutral-600 transition"
+                        className="bg-[#121212] border border-[#262626] rounded-xl p-4 sm:p-5 space-y-4 hover:border-neutral-600 transition"
                       >
                         {/* Question Header */}
-                        <div className="flex items-center justify-between border-b border-[#262626] pb-3">
+                        <div className="flex items-center justify-between border-b border-[#262626] pb-2.5">
                           <span className="text-xs font-mono font-bold text-white">
                             Question {qIdx + 1} ({mcq.unit})
                           </span>
-                          <span className="text-[11px] font-mono text-neutral-400 bg-[#262626] px-2 py-0.5 rounded">
+                          <span className="text-[10px] font-mono text-neutral-400 bg-[#262626] px-2 py-0.5 rounded">
                             {mcq.category}
                           </span>
                         </div>
 
                         {/* Question Text */}
-                        <h3 className="text-sm font-bold text-white leading-relaxed">
+                        <h3 className="text-xs sm:text-sm font-bold text-white leading-relaxed">
                           {mcq.question}
                         </h3>
 
                         {/* Options List */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {mcq.options.map((opt, optIdx) => {
                             const isCorrect = optIdx === mcq.correctIndex;
                             return (
                               <div
                                 key={optIdx}
-                                className={`p-3 rounded-lg border text-xs leading-relaxed flex items-start gap-2.5 ${
+                                className={`p-3 rounded-lg border text-xs leading-relaxed flex items-start gap-2 ${
                                   isCorrect
                                     ? "bg-white text-black font-bold border-white"
                                     : "bg-[#050505] border-[#262626] text-neutral-400"
@@ -984,7 +1034,7 @@ export default function Home() {
                                 </span>
                                 <span className="flex-1">{opt}</span>
                                 {isCorrect && (
-                                  <span className="text-[10px] bg-black text-white font-mono px-1.5 py-0.5 rounded font-extrabold shrink-0">
+                                  <span className="text-[9px] bg-black text-white font-mono px-1 py-0.5 rounded font-extrabold shrink-0">
                                     CORRECT
                                   </span>
                                 )}
@@ -994,9 +1044,9 @@ export default function Home() {
                         </div>
 
                         {/* Explanation Box Pre-Revealed */}
-                        <div className="bg-[#050505] border border-[#262626] rounded-lg p-3.5 space-y-1">
-                          <div className="text-[11px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                            <Sparkles className="w-3.5 h-3.5 text-white" />
+                        <div className="bg-[#050505] border border-[#262626] rounded-lg p-3 space-y-1">
+                          <div className="text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-white" />
                             Explanation
                           </div>
                           <p className="text-xs text-neutral-300 leading-relaxed">
@@ -1013,12 +1063,12 @@ export default function Home() {
               {mcqViewMode === "quiz" && (
                 <div>
                   {filteredMCQs.length > 0 ? (
-                    <div className="bg-[#121212] border border-[#262626] rounded-xl p-6 space-y-6 max-w-3xl mx-auto shadow-xl">
+                    <div className="bg-[#121212] border border-[#262626] rounded-xl p-4 sm:p-6 space-y-6 max-w-3xl mx-auto shadow-xl">
                       
                       {/* Question Header */}
                       <div className="flex items-center justify-between border-b border-[#262626] pb-3">
                         <span className="text-xs font-mono font-bold text-neutral-400">
-                          Question {currentQuizIndex + 1} of {filteredMCQs.length}
+                          Q {currentQuizIndex + 1} of {filteredMCQs.length}
                         </span>
                         <span className="text-xs font-semibold text-white bg-[#262626] px-2 py-0.5 rounded font-mono">
                           {filteredMCQs[currentQuizIndex].category} ({filteredMCQs[currentQuizIndex].unit})
@@ -1026,12 +1076,12 @@ export default function Home() {
                       </div>
 
                       {/* Question Text */}
-                      <h3 className="text-base font-bold text-white leading-snug">
+                      <h3 className="text-sm sm:text-base font-bold text-white leading-snug">
                         {filteredMCQs[currentQuizIndex].question}
                       </h3>
 
                       {/* Options */}
-                      <div className="space-y-3">
+                      <div className="space-y-2.5">
                         {filteredMCQs[currentQuizIndex].options.map((opt, optIdx) => {
                           const currentQId = filteredMCQs[currentQuizIndex].id;
                           const selectedAns = userAnswers[currentQId];
@@ -1057,10 +1107,10 @@ export default function Home() {
                               onClick={() => {
                                 setUserAnswers((prev) => ({ ...prev, [currentQId]: optIdx }));
                               }}
-                              className={`w-full text-left p-3.5 rounded-xl border text-xs leading-relaxed transition flex items-center justify-between ${btnStyle}`}
+                              className={`w-full text-left p-3 rounded-xl border text-xs leading-relaxed transition flex items-center justify-between ${btnStyle}`}
                             >
-                              <div className="flex items-center gap-3">
-                                <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center font-mono text-[11px] font-bold">
+                              <div className="flex items-center gap-2.5">
+                                <span className="w-5 h-5 rounded-full border border-current flex items-center justify-center font-mono text-[11px] font-bold shrink-0">
                                   {String.fromCharCode(65 + optIdx)}
                                 </span>
                                 <span>{opt}</span>
@@ -1076,7 +1126,7 @@ export default function Home() {
 
                       {/* Explanation Box when answered */}
                       {userAnswers[filteredMCQs[currentQuizIndex].id] !== undefined && (
-                        <div className="bg-[#050505] border border-[#333] rounded-xl p-4 space-y-1.5 animate-fadeIn">
+                        <div className="bg-[#050505] border border-[#333] rounded-xl p-3.5 space-y-1.5 animate-fadeIn">
                           <div className="text-xs font-bold text-white flex items-center gap-1.5">
                             <Sparkles className="w-4 h-4" />
                             Explanation & Concept
@@ -1088,13 +1138,13 @@ export default function Home() {
                       )}
 
                       {/* Quiz Controls Footer */}
-                      <div className="flex items-center justify-between border-t border-[#262626] pt-4">
+                      <div className="flex items-center justify-between border-t border-[#262626] pt-4 gap-2">
                         <button
                           disabled={currentQuizIndex === 0}
                           onClick={() => setCurrentQuizIndex((prev) => Math.max(0, prev - 1))}
-                          className="px-4 py-2 rounded-lg bg-[#262626] hover:bg-[#333] text-xs font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed transition"
+                          className="px-3.5 py-1.5 rounded-lg bg-[#262626] hover:bg-[#333] text-xs font-semibold text-white disabled:opacity-40 disabled:cursor-not-allowed transition"
                         >
-                          Previous
+                          Prev
                         </button>
 
                         <span className="text-xs text-neutral-400">
@@ -1104,15 +1154,15 @@ export default function Home() {
                         <button
                           disabled={currentQuizIndex === filteredMCQs.length - 1}
                           onClick={() => setCurrentQuizIndex((prev) => Math.min(filteredMCQs.length - 1, prev + 1))}
-                          className="px-4 py-2 rounded-lg bg-white text-black font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed transition shadow"
+                          className="px-3.5 py-1.5 rounded-lg bg-white text-black font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed transition shadow"
                         >
-                          Next Question
+                          Next
                         </button>
                       </div>
 
                     </div>
                   ) : (
-                    <div className="text-center py-12 text-neutral-500">No questions found for this filter.</div>
+                    <div className="text-center py-12 text-neutral-500">No questions found.</div>
                   )}
                 </div>
               )}
@@ -1121,16 +1171,16 @@ export default function Home() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 4: COMMAND REFERENCE VIEW                                            */}
+          {/* TAB 4: COMMAND REFERENCE VIEW (MOBILE OPTIMIZED)                          */}
           {/* ========================================================================= */}
           {activeTab === "commands" && (
             <div className="space-y-6 animate-fadeIn">
               
               {/* Command Reference Header */}
-              <div className="flex items-center justify-between flex-wrap gap-4 border-b border-[#262626] pb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#262626] pb-4">
                 <div>
-                  <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Terminal className="w-5 h-5 text-white" />
+                  <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+                    <Terminal className="w-5 h-5 text-white shrink-0" />
                     Django CLI & API Command Reference
                   </h2>
                   <p className="text-xs text-neutral-400 mt-0.5">
@@ -1143,7 +1193,7 @@ export default function Home() {
                   <select
                     value={commandCategory}
                     onChange={(e) => setCommandCategory(e.target.value)}
-                    className="bg-[#121212] border border-[#262626] text-white text-xs rounded-lg px-3 py-1.5 font-medium outline-none focus:border-white"
+                    className="w-full sm:w-auto bg-[#121212] border border-[#262626] text-white text-xs rounded-lg px-3 py-1.5 font-medium outline-none focus:border-white"
                   >
                     <option value="all">All Categories</option>
                     <option value="Django CLI">Django CLI</option>
@@ -1164,11 +1214,11 @@ export default function Home() {
                     className="bg-[#121212] border border-[#262626] hover:border-white rounded-xl p-4 space-y-3 transition"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-mono font-semibold text-white bg-[#262626] px-2 py-0.5 rounded">
+                      <span className="text-[10px] sm:text-[11px] font-mono font-semibold text-white bg-[#262626] px-2 py-0.5 rounded">
                         {item.category}
                       </span>
                       {item.badge && (
-                        <span className="text-[10px] font-mono text-neutral-400 bg-[#1a1a1a] px-1.5 py-0.5 rounded border border-[#262626]">
+                        <span className="text-[9px] font-mono text-neutral-400 bg-[#1a1a1a] px-1.5 py-0.5 rounded border border-[#262626]">
                           {item.badge}
                         </span>
                       )}
@@ -1206,22 +1256,22 @@ export default function Home() {
       </div>
 
       {/* ========================================================================= */}
-      {/* ⌘K GLOBAL COMMAND PALETTE SEARCH MODAL                                   */}
+      {/* ⌘K GLOBAL COMMAND PALETTE SEARCH MODAL (MOBILE RESPONSIVE)                */}
       {/* ========================================================================= */}
       {isSearchOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center pt-20 px-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center pt-10 sm:pt-20 px-3">
           <div className="bg-[#121212] border border-[#333] w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden space-y-0">
             
             {/* Input Header */}
-            <div className="p-4 border-b border-[#262626] flex items-center gap-3">
-              <Search className="w-5 h-5 text-white shrink-0" />
+            <div className="p-3.5 border-b border-[#262626] flex items-center gap-2.5">
+              <Search className="w-4 h-4 text-white shrink-0" />
               <input
                 type="text"
                 autoFocus
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                placeholder="Search notes, MCQs, commands (e.g. JWT, ForeignKey, makemigrations)..."
-                className="w-full bg-transparent text-sm text-white placeholder-neutral-500 outline-none"
+                placeholder="Search notes, MCQs, commands..."
+                className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-neutral-500 outline-none"
               />
               <button
                 onClick={() => setIsSearchOpen(false)}
@@ -1232,7 +1282,7 @@ export default function Home() {
             </div>
 
             {/* Results Container */}
-            <div className="max-h-96 overflow-y-auto p-4 space-y-4">
+            <div className="max-h-80 sm:max-h-96 overflow-y-auto p-3.5 space-y-3.5">
               {!globalSearch.trim() ? (
                 <div className="text-center py-8 text-xs text-neutral-500">
                   Type to search across all Django revision resources...
@@ -1241,19 +1291,18 @@ export default function Home() {
                 <>
                   {/* Matched Notes */}
                   {searchResults.notes.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                         Study Notes ({searchResults.notes.length})
                       </div>
                       {searchResults.notes.map((note) => (
                         <div
                           key={note.id}
                           onClick={() => {
-                            setActiveTab("notes");
-                            setSelectedNoteId(note.id);
+                            handleNavClick("notes", note.id);
                             setIsSearchOpen(false);
                           }}
-                          className="p-3 bg-[#1a1a1a] hover:bg-[#262626] rounded-xl cursor-pointer transition border border-[#262626]"
+                          className="p-2.5 bg-[#1a1a1a] hover:bg-[#262626] rounded-xl cursor-pointer transition border border-[#262626]"
                         >
                           <div className="text-xs font-bold text-white">{note.title}</div>
                           <div className="text-[11px] text-neutral-400 line-clamp-1 mt-0.5">
@@ -1266,18 +1315,18 @@ export default function Home() {
 
                   {/* Matched Commands */}
                   {searchResults.commands.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                         Commands ({searchResults.commands.length})
                       </div>
                       {searchResults.commands.map((cmd, idx) => (
                         <div
                           key={idx}
                           onClick={() => {
-                            setActiveTab("commands");
+                            handleNavClick("commands");
                             setIsSearchOpen(false);
                           }}
-                          className="p-3 bg-[#1a1a1a] hover:bg-[#262626] rounded-xl cursor-pointer transition border border-[#262626]"
+                          className="p-2.5 bg-[#1a1a1a] hover:bg-[#262626] rounded-xl cursor-pointer transition border border-[#262626]"
                         >
                           <div className="text-xs font-mono font-bold text-white">{cmd.command}</div>
                           <div className="text-[11px] text-neutral-400 mt-0.5">{cmd.description}</div>
@@ -1288,19 +1337,19 @@ export default function Home() {
 
                   {/* Matched MCQs */}
                   {searchResults.mcqs.length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                         MCQs ({searchResults.mcqs.length})
                       </div>
                       {searchResults.mcqs.map((mcq) => (
                         <div
                           key={mcq.id}
                           onClick={() => {
-                            setActiveTab("quiz");
                             setQuizUnit(mcq.unit);
+                            handleNavClick("quiz");
                             setIsSearchOpen(false);
                           }}
-                          className="p-3 bg-[#1a1a1a] hover:bg-[#262626] rounded-xl cursor-pointer transition border border-[#262626]"
+                          className="p-2.5 bg-[#1a1a1a] hover:bg-[#262626] rounded-xl cursor-pointer transition border border-[#262626]"
                         >
                           <div className="text-xs font-bold text-white">{mcq.question}</div>
                           <div className="text-[11px] text-neutral-400 line-clamp-1 mt-0.5">
@@ -1314,9 +1363,9 @@ export default function Home() {
               )}
             </div>
 
-            <div className="p-3 bg-[#0a0a0a] border-t border-[#262626] text-[11px] text-neutral-500 flex justify-between">
+            <div className="p-3 bg-[#0a0a0a] border-t border-[#262626] text-[10px] sm:text-[11px] text-neutral-500 flex justify-between">
               <span>Press <kbd className="text-neutral-400 font-mono">ESC</kbd> to close</span>
-              <span>Django Study Hub (Monochrome)</span>
+              <span>Django Study Hub</span>
             </div>
 
           </div>
