@@ -45,7 +45,7 @@ import { COMMAND_REFERENCE } from "@/data/commands";
 export default function Home() {
   // Navigation & View State
   const [activeTab, setActiveTab] = useState<"dashboard" | "notes" | "quiz" | "commands">("dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(false); // Closed by default on mobile, managed by effect
+  const [sidebarOpen, setSidebarOpen] = useState(false); // Managed by responsive handler
   const [expandedNotesMenu, setExpandedNotesMenu] = useState(true);
   const [expandedQuizMenu, setExpandedQuizMenu] = useState(true);
 
@@ -143,7 +143,7 @@ export default function Home() {
         correctCount++;
       }
     });
-    const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 87;
+    const accuracy = totalAnswered > 0 ? Math.round((correctCount / totalAnswered) * 100) : 92;
     return { totalAnswered, correctCount, accuracy };
   }, [userAnswers]);
 
@@ -170,17 +170,14 @@ export default function Home() {
     return { notes: matchedNotes, mcqs: matchedMCQs, commands: matchedCommands };
   }, [globalSearch]);
 
-  // Topic Grid Data for Quick Access
+  // Quick Access Topics Data (Unit 9 & Unit 10 focused)
   const QUICK_ACCESS_TOPICS = [
-    { id: "crud-practical-15m", name: "CRUD Practical (15 Marks)", icon: Code2, sections: "6 steps · Practical Exam", badge: "MUST MASTER" },
-    { id: "user-auth-5m", name: "Users & Auth (5 Marks)", icon: ShieldCheck, sections: "4 steps · Theory + Code", badge: "HIGH WEIGHT" },
-    { id: "drf-serializers-5m", name: "Serializers & DRF (5 Marks)", icon: KeyRound, sections: "ModelSerializer · Router", badge: "HIGH WEIGHT" },
-    { id: "unit8-setup-mvt", name: "Django Setup & MVT", icon: Terminal, sections: "startproject · runserver" },
-    { id: "unit8-models-migrations", name: "Models & Migrations", icon: Database, sections: "makemigrations · migrate" },
-    { id: "unit8-views-urls", name: "Views & Templates", icon: Layers, sections: "render · get_object_or_404" },
+    { id: "crud-practical-15m", name: "CRUD Practical (15 Marks)", icon: Code2, sections: "6 steps · Movie Review System", badge: "MUST MASTER" },
+    { id: "user-auth-5m", name: "Users & Auth (5 Marks)", icon: ShieldCheck, sections: "4 steps · UserCreateForm & login", badge: "HIGH WEIGHT" },
+    { id: "drf-serializers-5m", name: "Serializers & DRF (5 Marks)", icon: KeyRound, sections: "ModelSerializer · ViewSets", badge: "HIGH WEIGHT" },
     { id: "unit9-sqlite3-direct", name: "SQLite3 Direct Python API", icon: FileCode, sections: "connect · cursor · fetchall" },
-    { id: "unit10-jwt-simplejwt", name: "JWT Auth & SimpleJWT", icon: KeyRound, sections: "TokenObtainPairView" },
-    { id: "unit10-postman-versioning", name: "Postman & API Versioning", icon: Zap, sections: "URLPathVersioning" },
+    { id: "unit10-jwt-simplejwt", name: "JWT Auth & SimpleJWT", icon: KeyRound, sections: "TokenObtainPairView · Bearer" },
+    { id: "unit10-postman-versioning", name: "Postman & API Versioning", icon: Zap, sections: "URLPathVersioning · Header" },
   ];
 
   return (
@@ -203,7 +200,7 @@ export default function Home() {
             className="flex items-center gap-2 bg-[#121212] hover:bg-[#1a1a1a] border border-[#262626] px-3 py-1.5 rounded-lg text-neutral-400 cursor-pointer flex-1 max-w-md transition text-xs sm:text-sm"
           >
             <Search className="w-4 h-4 text-neutral-500 shrink-0" />
-            <span className="flex-1 text-neutral-400 truncate">Search notes, commands...</span>
+            <span className="flex-1 text-neutral-400 truncate">Search notes, 75 MCQs, commands...</span>
             <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[10px] font-mono bg-[#262626] px-1.5 py-0.5 rounded text-neutral-300 border border-neutral-700">
               ⌘K
             </kbd>
@@ -229,7 +226,7 @@ export default function Home() {
           />
         )}
 
-        {/* --- LEFT SIDEBAR (RESPONSIVE OVERLAY ON MOBILE / STICKY ON DESKTOP) --- */}
+        {/* --- LEFT SIDEBAR --- */}
         <aside
           className={`fixed lg:sticky top-16 bottom-0 left-0 z-50 lg:z-20 w-72 lg:w-[290px] bg-[#0a0a0a] border-r border-[#262626] flex flex-col transition-transform duration-300 ${
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -317,7 +314,7 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* MCQ Practice (Expandable) */}
+                {/* MCQ Practice (Expandable - Unit 9 & Unit 10) */}
                 <div>
                   <button
                     onClick={() => {
@@ -332,28 +329,32 @@ export default function Home() {
                   >
                     <div className="flex items-center gap-3">
                       <HelpCircle className="w-4 h-4" />
-                      <span>MCQ Practice</span>
+                      <span>MCQ Practice (75 Qs)</span>
                     </div>
                     {expandedQuizMenu ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                   </button>
 
                   {expandedQuizMenu && (
                     <div className="ml-3 pl-2.5 border-l border-[#262626] mt-1 space-y-1">
-                      {["all", "Unit 8", "Unit 9", "Unit 10"].map((unit) => (
+                      {[
+                        { id: "all", label: "All 75 MCQs" },
+                        { id: "Unit 9", label: "Unit 9 (Q445-Q465)" },
+                        { id: "Unit 10", label: "Unit 10 (Q476-Q529)" }
+                      ].map((item) => (
                         <button
-                          key={unit}
+                          key={item.id}
                           onClick={() => {
-                            setQuizUnit(unit);
+                            setQuizUnit(item.id);
                             setCurrentQuizIndex(0);
                             handleNavClick("quiz");
                           }}
                           className={`w-full text-left px-2.5 py-1 rounded-lg text-xs font-medium block transition ${
-                            quizUnit === unit && activeTab === "quiz"
+                            quizUnit === item.id && activeTab === "quiz"
                               ? "text-white bg-[#262626] font-bold"
                               : "text-neutral-400 hover:text-white"
                           }`}
                         >
-                          {unit === "all" ? "All Units MCQ" : `${unit} MCQ`}
+                          {item.label}
                         </button>
                       ))}
                     </div>
@@ -450,41 +451,41 @@ export default function Home() {
           {activeTab === "dashboard" && (
             <div className="space-y-6 sm:space-y-8 animate-fadeIn">
               
-              {/* HERO GREETING WITH NAME VRAJ */}
+              {/* HERO GREETING */}
               <div>
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-white tracking-tight">
                   {greeting}, Vraj 👋
                 </h1>
                 <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-                  Continue your Django & DRF journey — Monochrome Exam Revision Hub
+                  Unit 9 & Unit 10 Exam Revision Hub — Monochrome Dashboard
                 </p>
               </div>
 
-              {/* 4 STAT CARDS ROW (MOBILE 2x2 GRID) */}
+              {/* 4 STAT CARDS ROW */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {/* Stat 1: Topics Completed */}
+                {/* Stat 1: Topics */}
                 <div className="bg-[#121212] border border-[#262626] rounded-xl p-3.5 sm:p-4 flex flex-col justify-between hover:border-neutral-500 transition">
                   <div className="flex items-center justify-between text-neutral-400">
                     <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-neutral-400">
-                      Topics
+                      High-Weight Topics
                     </span>
                     <BookCheck className="w-4 h-4 text-white" />
                   </div>
                   <div className="mt-2 sm:mt-3">
-                    <span className="text-lg sm:text-2xl font-bold text-white">18 / 25</span>
+                    <span className="text-lg sm:text-2xl font-bold text-white">6 Modules</span>
                   </div>
                 </div>
 
-                {/* Stat 2: Questions Solved */}
+                {/* Stat 2: Total MCQs */}
                 <div className="bg-[#121212] border border-[#262626] rounded-xl p-3.5 sm:p-4 flex flex-col justify-between hover:border-neutral-500 transition">
                   <div className="flex items-center justify-between text-neutral-400">
                     <span className="text-[10px] sm:text-[11px] font-bold tracking-wider uppercase text-neutral-400">
-                      Questions
+                      Total MCQs
                     </span>
                     <HelpCircle className="w-4 h-4 text-white" />
                   </div>
                   <div className="mt-2 sm:mt-3">
-                    <span className="text-lg sm:text-2xl font-bold text-white">{quizStats.totalAnswered > 0 ? quizStats.totalAnswered : 218}</span>
+                    <span className="text-lg sm:text-2xl font-bold text-white">75 Qs</span>
                   </div>
                 </div>
 
@@ -515,47 +516,36 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* LEARNING PROGRESS CARD */}
+              {/* LEARNING PROGRESS CARD (UNIT 9 & UNIT 10) */}
               <div className="bg-[#121212] border border-[#262626] rounded-xl p-4 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-[#262626] pb-3">
                   <h3 className="text-xs sm:text-sm font-bold text-white tracking-wide uppercase flex items-center gap-2">
                     <BarChart2 className="w-4 h-4 text-white" />
-                    Learning Progress
+                    Learning Progress (Unit 9 & Unit 10)
                   </h3>
                   <span className="text-[11px] text-neutral-400 font-medium">Updated today</span>
                 </div>
 
                 <div className="space-y-4 pt-1">
-                  {/* Unit 8 */}
-                  <div>
-                    <div className="flex justify-between text-xs font-semibold mb-1.5 gap-2">
-                      <span className="text-neutral-300 truncate">Unit 8: Django Basics (MVT, Models, Admin, Views)</span>
-                      <span className="text-white font-mono shrink-0">82%</span>
-                    </div>
-                    <div className="w-full bg-[#050505] h-2 rounded-full overflow-hidden border border-[#262626]">
-                      <div className="bg-white h-full rounded-full w-[82%]" />
-                    </div>
-                  </div>
-
                   {/* Unit 9 */}
                   <div>
                     <div className="flex justify-between text-xs font-semibold mb-1.5 gap-2">
-                      <span className="text-neutral-300 truncate">Unit 9: Forms, Auth & Direct SQLite3 API</span>
-                      <span className="text-white font-mono shrink-0">45%</span>
+                      <span className="text-neutral-300 truncate">Unit 9: Forms, CSRF, Authentication & Direct SQLite3 API (21 MCQs)</span>
+                      <span className="text-white font-mono shrink-0">100%</span>
                     </div>
                     <div className="w-full bg-[#050505] h-2 rounded-full overflow-hidden border border-[#262626]">
-                      <div className="bg-white h-full rounded-full w-[45%]" />
+                      <div className="bg-white h-full rounded-full w-[100%]" />
                     </div>
                   </div>
 
                   {/* Unit 10 */}
                   <div>
                     <div className="flex justify-between text-xs font-semibold mb-1.5 gap-2">
-                      <span className="text-neutral-300 truncate">Unit 10: DRF & REST APIs (Serializers, ViewSets, JWT)</span>
-                      <span className="text-white font-mono shrink-0">78%</span>
+                      <span className="text-neutral-300 truncate">Unit 10: DRF, Serializers, ViewSets, JWT & Postman (54 MCQs)</span>
+                      <span className="text-white font-mono shrink-0">100%</span>
                     </div>
                     <div className="w-full bg-[#050505] h-2 rounded-full overflow-hidden border border-[#262626]">
-                      <div className="bg-white h-full rounded-full w-[78%]" />
+                      <div className="bg-white h-full rounded-full w-[100%]" />
                     </div>
                   </div>
                 </div>
@@ -575,7 +565,7 @@ export default function Home() {
                         <BookOpen className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-mono bg-[#1f1f1f] text-neutral-300 px-2 py-0.5 rounded border border-[#333]">
-                        2h read
+                        Practical + Code
                       </span>
                     </div>
                     <div>
@@ -583,12 +573,12 @@ export default function Home() {
                         Study Notes
                       </h3>
                       <p className="text-xs text-neutral-400 mt-1">
-                        8 chapters · 45 sections · Last updated today
+                        CRUD (15 Marks) · Auth (5 Marks) · DRF Serializers (5 Marks)
                       </p>
                     </div>
                   </div>
                   <div className="mt-5 pt-3 border-t border-[#262626] flex items-center text-xs font-semibold text-white group-hover:translate-x-1 transition">
-                    <span>Continue</span>
+                    <span>Explore Notes</span>
                     <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </div>
                 </div>
@@ -603,21 +593,21 @@ export default function Home() {
                       <div className="w-9 h-9 rounded-lg bg-[#1e1e1e] border border-[#333] flex items-center justify-center text-white">
                         <HelpCircle className="w-5 h-5" />
                       </div>
-                      <span className="text-[11px] font-mono bg-[#1f1f1f] text-neutral-300 px-2 py-0.5 rounded border border-[#333]">
-                        76 Qs
+                      <span className="text-[11px] font-mono bg-[#1f1f1f] text-white border border-neutral-600 px-2 py-0.5 rounded font-bold">
+                        75 Qs Complete
                       </span>
                     </div>
                     <div>
                       <h3 className="font-bold text-white text-base group-hover:underline transition">
-                        MCQ Practice & All Answers
+                        75 MCQs (Unit 9 & 10)
                       </h3>
                       <p className="text-xs text-neutral-400 mt-1">
-                        76 questions · Quiz Mode & View All Answers
+                        21 Unit 9 Qs (Q445-465) + 54 Unit 10 Qs (Q476-529)
                       </p>
                     </div>
                   </div>
                   <div className="mt-5 pt-3 border-t border-[#262626] flex items-center text-xs font-semibold text-white group-hover:translate-x-1 transition">
-                    <span>Continue</span>
+                    <span>Start Practice</span>
                     <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </div>
                 </div>
@@ -633,7 +623,7 @@ export default function Home() {
                         <Terminal className="w-5 h-5" />
                       </div>
                       <span className="text-[11px] font-mono bg-[#1f1f1f] text-white border border-neutral-600 px-2 py-0.5 rounded font-bold">
-                        Live
+                        Live CLI
                       </span>
                     </div>
                     <div>
@@ -641,12 +631,12 @@ export default function Home() {
                         Command Reference
                       </h3>
                       <p className="text-xs text-neutral-400 mt-1">
-                        Live CLI lookup · SQLite3 · DRF endpoints
+                        SQLite3 API · DRF endpoints · SimpleJWT tokens
                       </p>
                     </div>
                   </div>
                   <div className="mt-5 pt-3 border-t border-[#262626] flex items-center text-xs font-semibold text-white group-hover:translate-x-1 transition">
-                    <span>Continue</span>
+                    <span>View Commands</span>
                     <ArrowRight className="w-3.5 h-3.5 ml-1" />
                   </div>
                 </div>
@@ -657,11 +647,11 @@ export default function Home() {
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-4 bg-white rounded-full" />
                   <h2 className="text-xs font-extrabold tracking-wider uppercase text-neutral-400">
-                    QUICK ACCESS TOPICS
+                    HIGH WEIGHT REVISION TOPICS
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   {QUICK_ACCESS_TOPICS.map((topic) => (
                     <div
                       key={topic.id}
@@ -691,7 +681,7 @@ export default function Home() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 2: STUDY NOTES VIEW (MOBILE OPTIMIZED)                                */}
+          {/* TAB 2: STUDY NOTES VIEW                                                   */}
           {/* ========================================================================= */}
           {activeTab === "notes" && (
             <div className="space-y-6 animate-fadeIn">
@@ -701,13 +691,12 @@ export default function Home() {
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-2">
                     <BookOpen className="w-5 h-5 text-white" />
-                    <h2 className="text-base sm:text-lg font-bold text-white">Django & DRF Exam Notes</h2>
+                    <h2 className="text-base sm:text-lg font-bold text-white">Unit 9 & Unit 10 Exam Notes</h2>
                   </div>
 
                   <div className="flex items-center gap-1 bg-[#121212] p-1 rounded-xl border border-[#262626] overflow-x-auto max-w-full">
                     {[
-                      { label: "All", val: "all" },
-                      { label: "Unit 8", val: "Unit 8" },
+                      { label: "All Notes", val: "all" },
                       { label: "Unit 9", val: "Unit 9" },
                       { label: "Unit 10", val: "Unit 10" }
                     ].map((filter) => (
@@ -912,7 +901,7 @@ export default function Home() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 3: MCQ PRACTICE & ALL ANSWERS VIEW (MOBILE RESPONSIVE)               */}
+          {/* TAB 3: MCQ PRACTICE & ALL ANSWERS VIEW (75 MCQs COMPLETE)                 */}
           {/* ========================================================================= */}
           {activeTab === "quiz" && (
             <div className="space-y-6 animate-fadeIn">
@@ -922,10 +911,10 @@ export default function Home() {
                 <div>
                   <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
                     <HelpCircle className="w-5 h-5 text-white shrink-0" />
-                    Django Exam MCQ Bank ({filteredMCQs.length} Qs)
+                    75 Django MCQs ({filteredMCQs.length} Qs Showing)
                   </h2>
                   <p className="text-xs text-neutral-400 mt-0.5">
-                    Extracted from exam question bank · Practice Quiz or View All Answers
+                    Unit 9 (Q445–Q465) + Unit 10 (Q476–Q529) · View All Answers or Take Quiz
                   </p>
                 </div>
 
@@ -937,7 +926,7 @@ export default function Home() {
                       type="text"
                       value={mcqSearchQuery}
                       onChange={(e) => setMcqSearchQuery(e.target.value)}
-                      placeholder="Filter MCQs..."
+                      placeholder="Filter 75 MCQs..."
                       className="w-full bg-[#121212] border border-[#262626] text-xs text-white placeholder-neutral-500 pl-8 pr-3 py-1.5 rounded-lg outline-none focus:border-white"
                     />
                   </div>
@@ -951,10 +940,9 @@ export default function Home() {
                     }}
                     className="bg-[#121212] border border-[#262626] text-white text-xs rounded-lg px-2.5 py-1.5 font-medium outline-none focus:border-white"
                   >
-                    <option value="all">All Units ({MCQS.length} Qs)</option>
-                    <option value="Unit 8">Unit 8</option>
-                    <option value="Unit 9">Unit 9</option>
-                    <option value="Unit 10">Unit 10</option>
+                    <option value="all">All 75 MCQs</option>
+                    <option value="Unit 9">Unit 9 (21 Qs: Q445–Q465)</option>
+                    <option value="Unit 10">Unit 10 (54 Qs: Q476–Q529)</option>
                   </select>
 
                   {/* Mode Switcher Buttons */}
@@ -992,7 +980,7 @@ export default function Home() {
                     <span>
                       Showing <strong>{filteredMCQs.length}</strong> questions with correct answers revealed.
                     </span>
-                    <span className="text-neutral-500 font-mono text-[10px]">Monochrome Study Mode</span>
+                    <span className="text-neutral-500 font-mono text-[10px]">75 MCQs Complete Bank</span>
                   </div>
 
                   <div className="space-y-4 sm:space-y-6">
@@ -1004,7 +992,7 @@ export default function Home() {
                         {/* Question Header */}
                         <div className="flex items-center justify-between border-b border-[#262626] pb-2.5">
                           <span className="text-xs font-mono font-bold text-white">
-                            Question {qIdx + 1} ({mcq.unit})
+                            Question {mcq.id} ({mcq.unit})
                           </span>
                           <span className="text-[10px] font-mono text-neutral-400 bg-[#262626] px-2 py-0.5 rounded">
                             {mcq.category}
@@ -1068,7 +1056,7 @@ export default function Home() {
                       {/* Question Header */}
                       <div className="flex items-center justify-between border-b border-[#262626] pb-3">
                         <span className="text-xs font-mono font-bold text-neutral-400">
-                          Q {currentQuizIndex + 1} of {filteredMCQs.length}
+                          Q {currentQuizIndex + 1} of {filteredMCQs.length} (ID: Q{filteredMCQs[currentQuizIndex].id})
                         </span>
                         <span className="text-xs font-semibold text-white bg-[#262626] px-2 py-0.5 rounded font-mono">
                           {filteredMCQs[currentQuizIndex].category} ({filteredMCQs[currentQuizIndex].unit})
@@ -1171,7 +1159,7 @@ export default function Home() {
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 4: COMMAND REFERENCE VIEW (MOBILE OPTIMIZED)                          */}
+          {/* TAB 4: COMMAND REFERENCE VIEW                                             */}
           {/* ========================================================================= */}
           {activeTab === "commands" && (
             <div className="space-y-6 animate-fadeIn">
@@ -1256,7 +1244,7 @@ export default function Home() {
       </div>
 
       {/* ========================================================================= */}
-      {/* ⌘K GLOBAL COMMAND PALETTE SEARCH MODAL (MOBILE RESPONSIVE)                */}
+      {/* ⌘K GLOBAL COMMAND PALETTE SEARCH MODAL                                    */}
       {/* ========================================================================= */}
       {isSearchOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center pt-10 sm:pt-20 px-3">
@@ -1270,7 +1258,7 @@ export default function Home() {
                 autoFocus
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                placeholder="Search notes, MCQs, commands..."
+                placeholder="Search notes, 75 MCQs, commands..."
                 className="w-full bg-transparent text-xs sm:text-sm text-white placeholder-neutral-500 outline-none"
               />
               <button
@@ -1285,7 +1273,7 @@ export default function Home() {
             <div className="max-h-80 sm:max-h-96 overflow-y-auto p-3.5 space-y-3.5">
               {!globalSearch.trim() ? (
                 <div className="text-center py-8 text-xs text-neutral-500">
-                  Type to search across all Django revision resources...
+                  Type to search across all 75 MCQs and Django revision resources...
                 </div>
               ) : (
                 <>
@@ -1339,7 +1327,7 @@ export default function Home() {
                   {searchResults.mcqs.length > 0 && (
                     <div className="space-y-1.5">
                       <div className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                        MCQs ({searchResults.mcqs.length})
+                        75 MCQs Bank ({searchResults.mcqs.length} Matches)
                       </div>
                       {searchResults.mcqs.map((mcq) => (
                         <div
